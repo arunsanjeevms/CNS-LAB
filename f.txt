@@ -1,0 +1,1050 @@
+// 1 caesar cipher
+import java.util.Scanner;
+
+public class CaesarCipher {
+
+    public static String encrypt(String text, int shift) {
+        String result = "";
+        shift = shift % 26;
+
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+
+            if (Character.isUpperCase(ch)) {
+                result += (char) ((ch - 'A' + shift) % 26 + 'A');
+            } 
+            else if (Character.isLowerCase(ch)) {
+                result += (char) ((ch - 'a' + shift) % 26 + 'a');
+            } 
+            else {
+                result += ch;
+            }
+        }
+        return result;
+    }
+
+    public static String decrypt(String text, int shift) {
+        return encrypt(text, 26 - shift).toUpperCase();
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter text: ");
+        String text = sc.nextLine();
+
+        System.out.print("Enter shift value: ");
+        int shift = sc.nextInt();
+        if (shift != 3) {
+            System.out.println("Invalid key! Caesar Cipher key must be 3.");
+            sc.close();
+            return;
+        }
+
+        String encryptedText = encrypt(text, shift);
+        String decryptedText = decrypt(encryptedText, shift);
+
+        System.out.println("Encrypted text: " + encryptedText);
+        System.out.println("Decrypted text: " + decryptedText);
+
+        sc.close();
+    }
+}
+
+// 1 hillcipher
+
+// 
+
+import java.util.Scanner;
+
+public class HillCipher {
+    static int[][] key;
+    static int size;
+
+    static String encrypt(String text) {
+        text = text.toUpperCase().replaceAll("[^A-Z]", "");
+        while (text.length() % size != 0) {
+            text += "X";
+        }
+        return process(text, key);
+    }
+
+    // Decrypt function
+    static String decrypt(String cipher) {
+        int[][] inverseKey = getInverseMatrix(key, size);
+        return process(cipher, inverseKey);
+    }
+
+    // Helper to process matrix multiplication for both enc/dec
+    static String process(String text, int[][] currentKey) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < text.length(); i += size) {
+            int[] block = new int[size];
+            for (int j = 0; j < size; j++) {
+                block[j] = text.charAt(i + j) - 'A';
+            }
+            for (int col = 0; col < size; col++) {
+                int sum = 0;
+                for (int row = 0; row < size; row++) {
+                    sum += block[row] * currentKey[row][col];
+                }
+                result.append((char) (((sum % 26) + 26) % 26 + 'A'));
+            }
+        }
+        return result.toString();
+    }
+
+    // Finds the modular inverse matrix (K^-1 mod 26)
+    static int[][] getInverseMatrix(int[][] m, int n) {
+        int det = determinant(m, n);
+        det = ((det % 26) + 26) % 26;
+        int invDet = -1;
+
+        // Find modular multiplicative inverse of determinant
+        for (int x = 1; x < 26; x++) {
+            if ((det * x) % 26 == 1) {
+                invDet = x;
+                break;
+            }
+        }
+
+        if (invDet == -1) throw new RuntimeException("Key is not invertible!");
+
+        int[][] adj = adjoint(m);
+        int[][] inv = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                inv[i][j] = ((adj[i][j] * invDet) % 26 + 26) % 26;
+            }
+        }
+        return inv;
+    }
+
+    // Helper to find Adjoint (for inverse calculation)
+    static int[][] adjoint(int[][] m) {
+        int[][] adj = new int[size][size];
+        if (size == 1) { adj[0][0] = 1; return adj; }
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                int[][] temp = getCofactor(m, i, j);
+                int sign = ((i + j) % 2 == 0) ? 1 : -1;  // FIXED: Changed from % 22 to % 2
+                // Transpose while calculating cofactor to get adjoint
+                adj[j][i] = (sign * determinant(temp, size - 1));
+            }
+        }
+        return adj;
+    }
+
+    static int[][] getCofactor(int[][] m, int p, int q) {
+        int[][] temp = new int[size][size];
+        int i = 0, j = 0;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (row != p && col != q) {
+                    temp[i][j++] = m[row][col];
+                    if (j == size - 1) { j = 0; i++; }
+                }
+            }
+        }
+        return temp;
+    }
+
+    static int determinant(int[][] m, int n) {
+        if (n == 1) return m[0][0];
+        int D = 0, sign = 1;
+        for (int f = 0; f < n; f++) {
+            int[][] temp = getCofactor(m, 0, f);
+            D += sign * m[0][f] * determinant(temp, n - 1);
+            sign = -sign;
+        }
+        return D;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter size of matrix: ");
+        size = sc.nextInt();
+        key = new int[size][size];
+        System.out.println("Enter key matrix:");
+        for (int i = 0; i < size; i++)
+            for (int j = 0; j < size; j++)
+                key[i][j] = sc.nextInt();
+
+        sc.nextLine(); 
+        System.out.print("Enter message: ");
+        String msg = sc.nextLine();
+
+        String encrypted = encrypt(msg);
+        System.out.println("Encrypted: " + encrypted);
+        
+        // Calling decrypt and printing finally
+        String decrypted = decrypt(encrypted);
+        System.out.println("Decrypted: " + decrypted);
+
+        sc.close();
+    }
+}
+
+// 1 playfaircipher
+
+import java.util.*;
+
+public class PlayfairCipher {
+    private char[][] matrix = new char[5][5];
+    public void generateMatrix(String key) {
+        boolean[] used = new boolean[26];
+        key = key.toUpperCase().replaceAll("[^A-Z]", "").replace("J", "I");
+        int row = 0, col = 0;
+        for (char c : key.toCharArray()) {
+            if (!used[c - 'A']) {
+                matrix[row][col] = c;
+                used[c - 'A'] = true;
+                col++;
+                if (col == 5) { col = 0; row++; }
+            }
+        }
+        for (char c = 'A'; c <= 'Z'; c++) {
+            if (c == 'J') continue;
+            if (!used[c - 'A']) {
+                matrix[row][col] = c;
+                col++;
+                if (col == 5) { col = 0; row++; }
+            }
+        }
+    }
+    private List<String> prepareText(String text) {
+        text = text.toUpperCase().replaceAll("[^A-Z]", "").replace("J", "I");
+        List<String> digraphs = new ArrayList<>();
+        int i = 0;
+        while (i < text.length()) {
+            char first = text.charAt(i);
+            char second;
+            if (i + 1 < text.length()) {
+                second = text.charAt(i + 1);
+                if (first == second) { 
+                    second = 'X';
+                    i++; 
+                } else {
+                    i += 2;
+                }
+            } else { 
+                second = 'X';
+                i++;
+            }
+            digraphs.add("" + first + second);
+
+            if (i == text.length() - 1 && i < text.length()) i++;
+        }
+
+        return digraphs;
+    }
+    private int[] findPosition(char c) {
+        for (int i = 0; i < 5; i++)
+            for (int j = 0; j < 5; j++)
+                if (matrix[i][j] == c) return new int[]{i, j};
+        return null;
+    }
+    public String encrypt(String text) {
+        List<String> digraphs = prepareText(text);
+        StringBuilder cipher = new StringBuilder();
+
+        for (String pair : digraphs) {
+            char a = pair.charAt(0);
+            char b = pair.charAt(1);
+
+            int[] p1 = findPosition(a);
+            int[] p2 = findPosition(b);
+
+            if (p1[0] == p2[0]) { 
+                cipher.append(matrix[p1[0]][(p1[1] + 1) % 5]);
+                cipher.append(matrix[p2[0]][(p2[1] + 1) % 5]);
+            } else if (p1[1] == p2[1]) { 
+                cipher.append(matrix[(p1[0] + 1) % 5][p1[1]]);
+                cipher.append(matrix[(p2[0] + 1) % 5][p2[1]]);
+            } else { 
+                cipher.append(matrix[p1[0]][p2[1]]);
+                cipher.append(matrix[p2[0]][p1[1]]);
+            }
+        }
+
+        return cipher.toString();
+    }
+    public String decrypt(String text) {
+        List<String> digraphs = new ArrayList<>();
+        for (int i = 0; i < text.length(); i += 2)
+            digraphs.add(text.substring(i, i + 2));
+
+        StringBuilder plain = new StringBuilder();
+
+        for (String pair : digraphs) {
+            char a = pair.charAt(0);
+            char b = pair.charAt(1);
+
+            int[] p1 = findPosition(a);
+            int[] p2 = findPosition(b);
+
+            if (p1[0] == p2[0]) { 
+                plain.append(matrix[p1[0]][(p1[1] + 4) % 5]);
+                plain.append(matrix[p2[0]][(p2[1] + 4) % 5]);
+            } else if (p1[1] == p2[1]) { 
+                plain.append(matrix[(p1[0] + 4) % 5][p1[1]]);
+                plain.append(matrix[(p2[0] + 4) % 5][p2[1]]);
+            } else {
+                plain.append(matrix[p1[0]][p2[1]]);
+                plain.append(matrix[p2[0]][p1[1]]);
+            }
+        }
+
+        return plain.toString();
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        PlayfairCipher pf = new PlayfairCipher();
+
+        System.out.print("Enter key: ");
+        String key = sc.nextLine();
+
+        System.out.print("Enter plaintext: ");
+        String text = sc.nextLine();
+
+        pf.generateMatrix(key);
+
+        String encrypted = pf.encrypt(text);
+        String decrypted = pf.decrypt(encrypted);
+
+        System.out.println("Encrypted text: " + encrypted.toUpperCase());
+        System.out.println("Decrypted text: " + decrypted.toUpperCase());
+
+        sc.close();
+    }
+}
+
+
+// 1 vignerecipher
+
+import java.util.Scanner;
+
+public class VigenereCipher {
+    public static String encrypt(String text, String key) {
+        text = text.toUpperCase().replaceAll("[^A-Z]", "");
+        key = key.toUpperCase().replaceAll("[^A-Z]", "");
+        StringBuilder cipher = new StringBuilder();
+        int keyIndex = 0;
+        for (int i = 0; i < text.length(); i++) {
+            int p = text.charAt(i) - 'A';
+            int k = key.charAt(keyIndex % key.length()) - 'A';
+            int c = (p + k) % 26;
+            cipher.append((char) (c + 'A'));
+            keyIndex++;
+        }
+        return cipher.toString();
+    }
+    public static String decrypt(String text, String key) {
+        text = text.toUpperCase().replaceAll("[^A-Z]", "");
+        key = key.toUpperCase().replaceAll("[^A-Z]", "");
+        StringBuilder plain = new StringBuilder();
+        int keyIndex = 0;
+        for (int i = 0; i < text.length(); i++) {
+            int c = text.charAt(i) - 'A';
+            int k = key.charAt(keyIndex % key.length()) - 'A';
+            int p = (c - k + 26) % 26;
+            plain.append((char) (p + 'A'));
+            keyIndex++;
+        }
+        return plain.toString();
+    }
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter plaintext: ");
+        String plaintext = sc.nextLine();
+
+        System.out.print("Enter key: ");
+        String key = sc.nextLine();
+
+        String encrypted = encrypt(plaintext, key);
+        String decrypted = decrypt(encrypted, key);
+
+        System.out.println("Encrypted text: " + encrypted);
+        System.out.println("Decrypted text: " + decrypted);
+
+        sc.close();
+    }
+}
+
+
+// 2 doubletransportation
+
+import java.util.Scanner;
+
+public class DoubleTranspositionCipher {
+    
+    // Row Transposition - Create matrix by filling row-wise
+    public static char[][] rowTransposition(String text, int cols) {
+        text = text.replaceAll("\\s", "").toUpperCase();
+        int rows = (int) Math.ceil((double) text.length() / cols);
+        char[][] matrix = new char[rows][cols];
+        int index = 0;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                matrix[i][j] = (index < text.length()) ? text.charAt(index++) : 'X';
+            }
+        }
+        return matrix;
+    }
+    
+    // Columnar Transposition - Read columns according to key order
+    public static String columnarTransposition(char[][] matrix, int[] key) {
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+        StringBuilder cipher = new StringBuilder();
+        
+        // Read columns in the order specified by key
+        for (int k = 1; k <= key.length; k++) {
+            for (int j = 0; j < cols; j++) {
+                if (key[j] == k) { 
+                    for (int i = 0; i < rows; i++) {
+                        cipher.append(matrix[i][j]);
+                    }
+                    break;
+                }
+            }
+        }
+        return cipher.toString();
+    }
+    
+    // Reverse Columnar Transposition - Fill matrix column-wise according to key order
+    public static char[][] reverseColumnarTransposition(String ciphertext, int[] key, int rows) {
+        int cols = key.length;
+        char[][] matrix = new char[rows][cols];
+        int index = 0;
+        
+        // Fill columns in the order specified by key
+        for (int k = 1; k <= key.length; k++) {
+            for (int j = 0; j < cols; j++) {
+                if (key[j] == k) {
+                    for (int i = 0; i < rows; i++) {
+                        matrix[i][j] = ciphertext.charAt(index++);
+                    }
+                    break;
+                }
+            }
+        }
+        return matrix;
+    }
+    
+    // Reverse Row Transposition - Read matrix row-wise to get plaintext
+    public static String reverseRowTransposition(char[][] matrix) {
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+        StringBuilder plaintext = new StringBuilder();
+        
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                plaintext.append(matrix[i][j]);
+            }
+        }
+        return plaintext.toString();
+    }
+    
+    // Encrypt function
+    public static String encrypt(String plaintext, int cols, int[] key) {
+        // Step 1: Row transposition
+        char[][] matrix = rowTransposition(plaintext, cols);
+        
+        // Step 2: Columnar transposition
+        String encrypted = columnarTransposition(matrix, key);
+        
+        return encrypted;
+    }
+    
+    // Decrypt function
+    public static String decrypt(String ciphertext, int cols, int[] key) {
+        // Calculate number of rows
+        int rows = ciphertext.length() / key.length;
+        
+        // Step 1: Reverse columnar transposition
+        char[][] matrix = reverseColumnarTransposition(ciphertext, key, rows);
+        
+        // Step 2: Reverse row transposition
+        String decrypted = reverseRowTransposition(matrix);
+        
+        return decrypted;
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        System.out.print("Enter plaintext: ");
+        String plaintext = sc.nextLine();
+        
+        System.out.print("Enter number of columns (for row transposition): ");
+        int cols = sc.nextInt();
+        sc.nextLine(); 
+        
+        System.out.print("Enter columnar key (space separated, e.g., 3 1 2): ");
+        String[] keyInput = sc.nextLine().split(" ");
+        int[] key = new int[keyInput.length];
+        for (int i = 0; i < keyInput.length; i++) {
+            key[i] = Integer.parseInt(keyInput[i]);
+        }
+        
+        // Encrypt
+
+        String encrypted = encrypt(plaintext, cols, key);
+        System.out.println("Encrypted text: " + encrypted);
+        
+        // Decrypt
+        String decrypted = decrypt(encrypted, cols, key);
+        System.out.println("Decrypted text: " + decrypted);
+        
+        sc.close();
+    }
+}
+
+//2 RailFence
+
+import java.util.Scanner;
+
+public class RailFenceCipher {
+    public static String encrypt(String text, int rails) {
+        text = text.replaceAll("\\s", "").toUpperCase();
+        char[][] rail = new char[rails][text.length()];
+        for (int i = 0; i < rails; i++)
+            for (int j = 0; j < text.length(); j++)
+                rail[i][j] = '\n';
+        boolean down = false;
+        int row = 0, col = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (row == 0 || row == rails - 1)
+                down = !down;
+
+            rail[row][col++] = text.charAt(i);
+            row += down ? 1 : -1;
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < rails; i++)
+            for (int j = 0; j < text.length(); j++)
+                if (rail[i][j] != '\n')
+                    result.append(rail[i][j]);
+
+        return result.toString();
+    }
+    public static String decrypt(String cipher, int rails) {
+        char[][] rail = new char[rails][cipher.length()];
+
+        for (int i = 0; i < rails; i++)
+            for (int j = 0; j < cipher.length(); j++)
+                rail[i][j] = '\n';
+
+        boolean down = false;
+        int row = 0, col = 0;
+
+        for (int i = 0; i < cipher.length(); i++) {
+            if (row == 0 || row == rails - 1)
+                down = !down;
+
+            rail[row][col++] = '*';
+            row += down ? 1 : -1;
+        }
+        int index = 0;
+        for (int i = 0; i < rails; i++)
+            for (int j = 0; j < cipher.length(); j++)
+                if (rail[i][j] == '*' && index < cipher.length())
+                    rail[i][j] = cipher.charAt(index++);
+
+        StringBuilder result = new StringBuilder();
+        down = false;
+        row = 0;
+        col = 0;
+
+        for (int i = 0; i < cipher.length(); i++) {
+            if (row == 0 || row == rails - 1)
+                down = !down;
+
+            result.append(rail[row][col++]);
+            row += down ? 1 : -1;
+        }
+
+        return result.toString();
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter plaintext: ");
+        String text = sc.nextLine();
+
+        System.out.print("Enter number of rails: ");
+        int rails = sc.nextInt();
+
+        String encrypted = encrypt(text, rails);
+        String decrypted = decrypt(encrypted, rails);
+
+        System.out.println("Encrypted text: " + encrypted);
+        System.out.println("Decrypted text: " + decrypted);
+
+        sc.close();
+    }
+}
+
+//3 DES
+
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import java.util.*;
+
+public class DES {
+    public static void main(String[] argv) {
+        try {
+            KeyGenerator keygenerator = KeyGenerator.getInstance("DES");
+            SecretKey myDesKey = keygenerator.generateKey();
+            
+            Cipher desCipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            
+            Scanner sc = new Scanner(System.in);
+            System.out.println("Enter Plain Text: ");
+            String w = sc.nextLine();
+            byte[] text = w.getBytes();
+
+            // --- ENCRYPTION ---
+            desCipher.init(Cipher.ENCRYPT_MODE, myDesKey);
+            byte[] textEncrypted = desCipher.doFinal(text);
+            
+            // Use Base64 to make the encrypted bytes readable
+            String encryptedString = Base64.getEncoder().encodeToString(textEncrypted);
+            System.out.println("Encrypted Message : " + encryptedString);
+
+            // --- DECRYPTION ---
+            desCipher.init(Cipher.DECRYPT_MODE, myDesKey);
+            byte[] textDecrypted = desCipher.doFinal(textEncrypted);
+            
+            System.out.println("Decrypted Message: " + new String(textDecrypted));
+
+        } catch (Exception e) {
+            // Simplified catch for brevity
+            e.printStackTrace();
+        }
+    }
+}
+
+// 4 AES
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Scanner;
+
+public class AES {
+    public static void main(String[] args) {
+        try {
+            // 1. Generate an AES-128 Key
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(128); 
+            SecretKey secretKey = keyGen.generateKey();
+
+            // 2. Generate a random Initialization Vector (IV)
+            // Required for CBC mode to ensure uniqueness
+            byte[] iv = new byte[16];
+            SecureRandom random = new SecureRandom();
+            random.nextBytes(iv);
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+            Scanner sc = new Scanner(System.in);
+            System.out.print("Enter Plain Text: ");
+            String input = sc.nextLine();
+
+            // --- ENCRYPTION ---
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
+            
+            byte[] encryptedBytes = cipher.doFinal(input.getBytes());
+            String encodedString = Base64.getEncoder().encodeToString(encryptedBytes);
+            
+            System.out.println("Encrypted text: " + encodedString);
+
+            // --- DECRYPTION ---
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+            
+            System.out.println("Decrypted Message: " + new String(decryptedBytes));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+// 5 RSA html
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RSA Algorithm Demo</title>
+    <style>
+        body {
+            font-weight:bold;
+            background-color:aquamarine;
+            font-family: Arial;
+            text-align: center;
+            margin-top: 40px;
+        }
+        input {
+            background-color:rgb(237, 255, 192);
+            margin: 5px;
+            padding: 5px;
+        }
+        button {
+            font-weight:italic;
+            padding: 6px 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>RSA Algorithm Implementation</h2>
+
+<h3>Key Generation</h3>
+Enter Prime p: <input type="number" id="p"><br>
+Enter Prime q: <input type="number" id="q"><br>
+<button onclick="generateKeys()">Generate Keys</button>
+
+<p id="keys"></p>
+
+<hr>
+
+<h3>Encryption</h3>
+Enter Number Message: <input type="number" id="message"><br>
+<button onclick="encrypt()">Encrypt</button>
+
+<p id="encrypted"></p>
+
+<hr>
+
+<h3>Decryption</h3>
+<button onclick="decrypt()">Decrypt</button>
+
+<p id="decrypted"></p>
+
+<script>
+
+let n, phi, e, d, encryptedValue;
+
+// Function to calculate GCD
+function gcd(a, b) {
+    while (b != 0) {
+        let temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Function to find modular inverse
+function modInverse(e, phi) {
+    for (let i = 1; i < phi; i++) {
+        if ((e * i) % phi == 1)
+            return i;
+    }
+    return 1;
+}
+
+// Power Mod Function
+function powerMod(base, exp, mod) {
+    let result = 1;
+    base = base % mod;
+    while (exp > 0) {
+        if (exp % 2 == 1)
+            result = (result * base) % mod;
+        exp = Math.floor(exp / 2);
+        base = (base * base) % mod;
+    }
+    return result;
+}
+
+function generateKeys() {
+    let p = parseInt(document.getElementById("p").value);
+    let q = parseInt(document.getElementById("q").value);
+
+    n = p * q;
+    phi = (p - 1) * (q - 1);
+
+    // Choose e
+    for (e = 2; e < phi; e++) {
+        if (gcd(e, phi) == 1)
+            break;
+    }
+
+    d = modInverse(e, phi);
+
+    document.getElementById("keys").innerHTML =
+        "Public Key (e, n): (" + e + ", " + n + ")<br>" +
+        "Private Key (d, n): (" + d + ", " + n + ")";
+}
+
+function encrypt() {
+    let message = parseInt(document.getElementById("message").value);
+    encryptedValue = powerMod(message, e, n);
+
+    document.getElementById("encrypted").innerHTML =
+        "Encrypted Message: " + encryptedValue;
+}
+
+function decrypt() {
+    let decryptedValue = powerMod(encryptedValue, d, n);
+
+    document.getElementById("decrypted").innerHTML =
+        "Decrypted Message: " + decryptedValue;
+}
+
+</script>
+
+</body>
+</html> 
+
+// 6 D  
+import java.security.*;
+import java.util.Base64;
+import java.util.Scanner;
+
+public class DSS {
+    public static void main(String[] args) throws Exception {
+
+        Scanner sc = new Scanner(System.in);
+
+        // User enters message
+        System.out.print("Enter message: ");
+        String message = sc.nextLine();
+
+        // Generate DSA Key Pair
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA");
+        keyGen.initialize(2048);
+        KeyPair pair = keyGen.generateKeyPair();
+
+        PrivateKey privateKey = pair.getPrivate();
+        PublicKey publicKey = pair.getPublic();
+
+        // Create Signature
+        Signature sign = Signature.getInstance("SHA256withDSA");
+        sign.initSign(privateKey);
+        sign.update(message.getBytes());
+
+        byte[] digitalSignature = sign.sign();
+
+        String encodedSignature = Base64.getEncoder().encodeToString(digitalSignature);
+
+        System.out.println("\nDigital Signature:");
+        System.out.println(encodedSignature);
+
+        // Verification
+        Signature verify = Signature.getInstance("SHA256withDSA");
+        verify.initVerify(publicKey);
+        verify.update(message.getBytes());
+
+        boolean result = verify.verify(digitalSignature);
+
+        System.out.println("\nSignature Verification Result: " + result);
+    }
+}
+// 6 E 
+import java.util.Scanner;
+
+public class ElGamalSignature {
+
+    // Function for modular exponentiation
+    static long modExp(long base, long exp, long mod) {
+        long result = 1;
+        base = base % mod;
+
+        while (exp > 0) {
+            if (exp % 2 == 1)
+                result = (result * base) % mod;
+
+            exp = exp / 2;
+            base = (base * base) % mod;
+        }
+        return result;
+    }
+
+    // Function to find GCD
+    static long gcd(long a, long b) {
+        while (b != 0) {
+            long t = b;
+            b = a % b;
+            a = t;
+        }
+        return a;
+    }
+
+    // Function to find modular inverse
+    static long modInverse(long a, long m) {
+        long m0 = m, t, q;
+        long x0 = 0, x1 = 1;
+
+        if (m == 1)
+            return 0;
+
+        while (a > 1) {
+            q = a / m;
+            t = m;
+
+            m = a % m;
+            a = t;
+            t = x0;
+
+            x0 = x1 - q * x0;
+            x1 = t;
+        }
+
+        if (x1 < 0)
+            x1 += m0;
+
+        return x1;
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        long p, g, x, k, m;
+        long y, r, s, kInv, v1, v2;
+
+        // Inputs
+        System.out.print("Enter prime number p: ");
+        p = sc.nextLong();
+
+        System.out.print("Enter primitive root g: ");
+        g = sc.nextLong();
+
+        System.out.print("Enter private key x: ");
+        x = sc.nextLong();
+
+        System.out.print("Enter random number k (gcd(k, p-1)=1): ");
+        k = sc.nextLong();
+
+        System.out.print("Enter message (integer): ");
+        m = sc.nextLong();
+
+        // Public key
+        y = modExp(g, x, p);
+
+        // Signature generation
+        r = modExp(g, k, p);
+        kInv = modInverse(k, p - 1);
+
+        s = (kInv * (m - x * r)) % (p - 1);
+        if (s < 0)
+            s += (p - 1);
+
+        System.out.println("\n--- Signature ---");
+        System.out.println("r = " + r);
+        System.out.println("s = " + s);
+
+        // Verification
+        v1 = (modExp(y, r, p) * modExp(r, s, p)) % p;
+        v2 = modExp(g, m, p);
+
+        System.out.println("\n--- Verification ---");
+        System.out.println("v1 = " + v1);
+        System.out.println("v2 = " + v2);
+
+        if (v1 == v2)
+            System.out.println("Signature is VALID");
+        else
+            System.out.println("Signature is INVALID");
+
+        sc.close();
+    }
+}
+// 6 S
+import java.util.Scanner;
+
+public class SchnorrSignature {
+
+    // Modular exponentiation
+    static long modExp(long base, long exp, long mod) {
+        long result = 1;
+        base = base % mod;
+
+        while (exp > 0) {
+            if (exp % 2 == 1)
+                result = (result * base) % mod;
+
+            exp = exp / 2;
+            base = (base * base) % mod;
+        }
+        return result;
+    }
+
+    // Simple hash function (for demo purpose only)
+    static long hash(long value, long mod) {
+        return value % mod;  // Not secure, just for lab
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        long p, q, g, x, y;
+        long k, r, e, s, m;
+        long v1, v2;
+
+        // Inputs
+        System.out.print("Enter prime p: ");
+        p = sc.nextLong();
+
+        System.out.print("Enter prime q (q divides p-1): ");
+        q = sc.nextLong();
+
+        System.out.print("Enter generator g: ");
+        g = sc.nextLong();
+
+        System.out.print("Enter private key x: ");
+        x = sc.nextLong();
+
+        System.out.print("Enter message (integer): ");
+        m = sc.nextLong();
+
+        // Public key
+        y = modExp(g, x, p);
+
+        // Signature generation
+        System.out.print("Enter random k: ");
+        k = sc.nextLong();
+
+        r = modExp(g, k, p);
+        e = hash(r + m, q);   // Challenge
+        s = (k + x * e) % q;
+
+        System.out.println("\n--- Signature ---");
+        System.out.println("e = " + e);
+        System.out.println("s = " + s);
+
+        // Verification
+        v1 = modExp(g, s, p);
+        v2 = (modExp(y, e, p) * r) % p;
+
+        System.out.println("\n--- Verification ---");
+        System.out.println("v1 = " + v1);
+        System.out.println("v2 = " + v2);
+
+        if (v1 == v2)
+            System.out.println("Signature is VALID");
+        else
+            System.out.println("Signature is INVALID");
+
+        sc.close();
+    }
+}
+
